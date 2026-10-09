@@ -1,0 +1,6 @@
+# Dependências autorizadas (CONTEXT_RULES, seção 3.1).
+# O código de produção (src/) usa apenas a biblioteca padrão do Python 3.12+.
+# As dependências abaixo são exclusivas de desenvolvimento e homologação:
+pytest==8.4.2      # Test Harness (execução dos cenários de aceite)
+pytest-cov==7.0.0  # Relatório de cobertura (meta mínima de 90%)
+ruff==0.14.14      # Lint (PEP 8, type hints e docstrings Google style)
