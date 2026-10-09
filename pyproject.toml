@@ -1,0 +1,36 @@
+# Configuração das ferramentas de homologação (pytest, cobertura e lint).
+# As dependências ficam em requirements.txt; este arquivo não empacota o projeto.
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+addopts = "-v --cov=src --cov-report=term-missing"
+# fixtures_dados é importado pelo test_harness antes de ser registrado como
+# plugin; como não contém asserts, a reescrita de asserts não é necessária.
+filterwarnings = [
+    "ignore:Module already imported so cannot be rewritten; fixtures_dados",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+# E/W: PEP 8 | F: pyflakes | I: imports | N: nomes | UP: sintaxe moderna
+# B: bugbear | ANN: type hints obrigatórios | D: docstrings
+select = ["E", "W", "F", "I", "N", "UP", "B", "ANN", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["analisador", "excecoes", "modelos", "fixtures_dados"]
