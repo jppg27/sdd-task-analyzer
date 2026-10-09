@@ -1,0 +1,25 @@
+# Bytecode e caches do Python
+__pycache__/
+*.py[cod]
+
+# Testes e cobertura
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Lint
+.ruff_cache/
+.mypy_cache/
+
+# Ambientes virtuais
+venv/
+.venv/
+env/
+
+# IDEs e sistema operacional
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
