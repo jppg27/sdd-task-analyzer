@@ -1,0 +1,98 @@
+# Pipeline de Integração Contínua do TaskAnalyzer (Fase 3).
+#
+# Gatilhos: push ou Pull Request nas branches main e develop.
+# Job 1 (testes): Test Harness + lint + gate de governança em Python 3.11, 3.12 e 3.13.
+# Job 2 (docker): build da imagem e execução do Test Harness dentro do contêiner.
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Test Harness (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 = ambiente de referência do enunciado; 3.12 = versão mínima do CONTEXT_RULES.
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v6
+
+      - name: Configura o Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Instala as dependências autorizadas (requirements.txt)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: "Governança: src/ usa somente a biblioteca padrão (CONTEXT_RULES 3.1)"
+        run: |
+          python - <<'EOF'
+          import ast
+          import pathlib
+          import sys
+
+          src = pathlib.Path("src")
+          locais = {p.stem for p in src.glob("*.py")}
+          violacoes = []
+          for arquivo in sorted(src.glob("*.py")):
+              arvore = ast.parse(arquivo.read_text(encoding="utf-8"))
+              for no in ast.walk(arvore):
+                  if isinstance(no, ast.Import):
+                      nomes = [alias.name for alias in no.names]
+                  elif isinstance(no, ast.ImportFrom) and no.level == 0 and no.module:
+                      nomes = [no.module]
+                  else:
+                      continue
+                  for nome in nomes:
+                      raiz = nome.split(".")[0]
+                      if raiz not in sys.stdlib_module_names and raiz not in locais:
+                          violacoes.append(f"{arquivo}:{no.lineno} importa '{nome}'")
+          if violacoes:
+              print("Dependência externa em src/ (proibida pelo CONTEXT_RULES):")
+              print("\n".join(f"  {v}" for v in violacoes))
+              sys.exit(1)
+          print("OK: src/ importa apenas a biblioteca padrão e módulos do próprio projeto.")
+          EOF
+
+      - name: Lint (PEP 8, type hints e docstrings)
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Test Harness (pytest, cobertura mínima de 90%)
+        run: pytest tests/test_harness.py -v
+
+  docker:
+    name: Docker (build + Test Harness no contêiner)
+    runs-on: ubuntu-latest
+    needs: testes
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v6
+
+      - name: Build da imagem
+        run: docker compose build testes
+
+      - name: Executa o Test Harness isolado no contêiner
+        run: docker compose run --rm -T testes
