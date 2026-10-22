@@ -1,27 +1,31 @@
 # TaskAnalyzer — SDD
 
+[![CI](https://github.com/jppg27/sdd-task-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/jppg27/sdd-task-analyzer/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![Testes](https://img.shields.io/badge/pytest-66%20passed-brightgreen?logo=pytest)
+![Docker](https://img.shields.io/badge/docker-python%3A3.12--slim-2496ED?logo=docker&logoColor=white)
 ![Cobertura](https://img.shields.io/badge/cobertura-100%25-brightgreen)
 ![Lint](https://img.shields.io/badge/lint-ruff%20ok-brightgreen)
 ![Dependências](https://img.shields.io/badge/produ%C3%A7%C3%A3o-somente%20stdlib-blue)
 
 Módulo de análise estatística de lotes de tarefas, construído com **Spec-Driven Development (SDD)**: o código em `src/` foi gerado por assistente de IA a partir do contrato em [`specs/especificacao_taskanalyzer.md`](specs/especificacao_taskanalyzer.md), sob as regras de [`CONTEXT_RULES.md`](CONTEXT_RULES.md), e homologado por revisão humana e pelo Test Harness em `tests/`.
 
-**Bootcamp III — Desafio Cumulativo, Fase 2** · João Pedro Pinheiro Ghesti · Ciência de Dados e Machine Learning (Asa Norte)
+**Bootcamp III — Desafio Cumulativo (Fases 1 a 3)** · João Pedro Pinheiro Ghesti · Ciência de Dados e Machine Learning (Asa Norte)
 
 ---
 
-## Status do build
+## Status do build (CI/CD)
 
-| Verificação | Comando | Resultado |
-|---|---|---|
-| Test Harness | `pytest` | **66 passed** (100%) |
-| Cobertura de `src/` | `pytest` (pytest-cov, meta ≥ 90%) | **100%** (linhas e ramos) |
-| Lint, PEP 8, type hints e docstrings | `ruff check .` | **All checks passed** |
-| Versões de Python verificadas | — | 3.12 e 3.13 |
+O status atual está no badge **CI** acima e na aba [Actions](https://github.com/jppg27/sdd-task-analyzer/actions). O pipeline [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda a cada push ou Pull Request nas branches `main` e `develop`:
 
-> Na Fase 3 esta tabela será substituída pelo badge do pipeline de CI/CD (GitHub Actions).
+| Job | Ambiente | Etapas | Falha quando |
+|---|---|---|---|
+| `testes` | `ubuntu-latest`, Python 3.11, 3.12 e 3.13 | instala `requirements.txt` → gate de governança → `ruff check` e `ruff format --check` → `pytest tests/test_harness.py -v` | um teste falha, a cobertura fica abaixo de 90%, o lint aponta algo ou `src/` importa biblioteca fora da padrão |
+| `docker` | `ubuntu-latest` (após `testes`) | `docker compose build` → `docker compose run --rm testes` | a imagem não constrói ou o Test Harness falha dentro do contêiner |
+
+Resultado de referência: **66 passed**, cobertura de **100%** (linhas e ramos) e ruff **All checks passed**.
+
+> **Por que três versões de Python?** O enunciado da Fase 3 usa Python 3.11 como ambiente de referência, enquanto o `CONTEXT_RULES.md` fixa 3.12 como versão mínima do projeto. O CI prova que o código passa nas duas, e na 3.13; a imagem Docker usa a 3.12, mínima do CONTEXT_RULES.
 
 ---
 
@@ -54,10 +58,15 @@ Entradas inválidas disparam exceções específicas, todas subclasses de `TaskV
 
 ## Estrutura do repositório
 
-Segue exatamente a arquitetura planejada na Fase 1 (apresentação "Arquitetura do Repositório para Git e GitHub"):
+Segue a arquitetura planejada na Fase 1 (apresentação "Arquitetura do Repositório para Git e GitHub"), acrescida dos arquivos de infraestrutura da Fase 3:
 
 ```text
-taskanalyzer-sdd/
+sdd-task-analyzer/
+├── .github/
+│   └── workflows/
+│       └── ci.yml             # Fase 3: pipeline de CI/CD (GitHub Actions)
+├── Dockerfile                 # Fase 3: empacotamento (python:3.12-slim, usuário sem root)
+├── docker-compose.yml         # Fase 3: orquestração (serviços testes e lint)
 ├── README.md                  # Documentação geral, execução e status do build
 ├── CONTEXT_RULES.md           # Regras de governança de IA (Seção 3 da especificação)
 ├── requirements.txt           # Dependências autorizadas (pytest, pytest-cov, ruff)
@@ -72,17 +81,34 @@ taskanalyzer-sdd/
     └── excecoes.py            # TaskValidationError e as três exceções específicas
 ```
 
-Arquivos de apoio na raiz: `.gitignore` (exigido pelo enunciado) e `pyproject.toml` (somente configuração de pytest, cobertura mínima de 90% e ruff — não empacota o projeto).
+Arquivos de apoio na raiz: `.gitignore`, `.dockerignore` (mantém a imagem só com o necessário) e `pyproject.toml` (somente configuração de pytest, cobertura mínima de 90% e ruff — não empacota o projeto).
 
 ---
 
 ## Como executar
 
+### Com Docker (recomendado — não depende do ambiente local)
+
+Pré-requisito: Docker com o plugin Compose.
+
+```bash
+git clone https://github.com/jppg27/sdd-task-analyzer.git
+cd sdd-task-analyzer
+
+docker compose build                 # constrói a imagem sdd-task-analyzer:latest
+docker compose run --rm testes       # Test Harness isolado (66 testes + cobertura)
+docker compose run --rm lint         # lint com ruff
+```
+
+Sem o Compose: `docker build -t sdd-task-analyzer .` e depois `docker run --rm sdd-task-analyzer`.
+
+### Localmente
+
 Pré-requisito: **Python 3.12+**.
 
 ```bash
-git clone https://github.com/<seu-usuario>/taskanalyzer-sdd.git
-cd taskanalyzer-sdd
+git clone https://github.com/jppg27/sdd-task-analyzer.git
+cd sdd-task-analyzer
 
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
@@ -190,6 +216,8 @@ Plano definido na Fase 1 e aplicado a todo código gerado por IA antes do commit
 | Prevenção de divisão por zero | Médias de listas vazias retornam `0.0`; estimativas `<= 0` ficam fora do índice |
 | Sem persistência e sem estado global mutável | Funções puras; teste `test_execucao_nao_guarda_estado_entre_chamadas` |
 
+Desde a Fase 3, estas regras deixaram de depender só de revisão manual: o pipeline de CI reprova automaticamente qualquer push ou Pull Request que quebre testes, cobertura, lint (type hints, docstrings, PEP 8) ou a regra de usar apenas a biblioteca padrão em `src/`.
+
 ### Decisões de interpretação (lacunas do contrato)
 
 Pontos que a especificação não fixa explicitamente. Cada um foi resolvido da forma mais conservadora, documentado e coberto por teste, para validação humana:
@@ -227,27 +255,20 @@ O código de `src/` e os testes de `tests/` foram gerados com o assistente de IA
 - **Exigir explicação das fórmulas.** Cada fórmula está descrita no docstring de `analisador.py` e conferida com valores calculados à mão nos testes.
 - **Não alterar os cenários.** Os quatro Cenários de Aceite foram traduzidos literalmente em classes de teste, sem adaptação.
 
+**Fase 3.** O pipeline de CI, o `Dockerfile` e o `docker-compose.yml` também foram gerados com o Claude, a partir do enunciado da Fase 3 e deste repositório, e homologados antes do merge. O relatório de Governança e Ética da entrega final detalha a análise de alucinações, a homologação humana e a rastreabilidade dos prompts.
+
 ---
 
 ## Fluxo de versionamento (Git Flow simplificado)
 
 | Branch | Conteúdo | Destino do PR |
 |---|---|---|
-| `main` | Versões homologadas (tag `v0.2.0` = Fase 2) | — |
+| `main` | Versões homologadas (tags `v0.2.0` = Fase 2 e `v1.0.0` = entrega final) | — |
 | `develop` | Integração das funcionalidades | `main` |
 | `feature/sdd-specification` | Especificação SDD e CONTEXT_RULES | `develop` |
 | `feature/task-analyzer-impl` | Exceções, modelos e analisador gerados via IA | `develop` |
 | `feature/test-harness` | Fixtures e Test Harness (Cenários 1 a 4) | `develop` |
+| `feature/ci-cd-docker` | Pipeline do GitHub Actions, Dockerfile e docker-compose (Fase 3) | `develop` |
 
-Commits pequenos no padrão Conventional Commits (`feat:`, `test:`, `docs:`, `chore:`), Pull Requests obrigatórios com revisão humana antes do merge e lint verificado antes de cada merge.
+Commits pequenos no padrão Conventional Commits (`feat:`, `test:`, `docs:`, `chore:`, `ci:`, `build:`), Pull Requests obrigatórios com revisão humana antes do merge e, desde a Fase 3, o check **CI** precisa estar verde antes do merge.
 
----
-
-## Links
-
-- Especificação SDD (Fase 1, Google Docs): *[inserir link]*
-- Vídeo de apresentação técnica (Fase 2, YouTube): *[inserir link]*
-
-## Próximos passos (Fase 3)
-
-CI/CD com GitHub Actions (pytest + ruff a cada PR), containerização com Docker e relatório de governança/segurança.
