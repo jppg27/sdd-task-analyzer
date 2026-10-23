@@ -1,0 +1,19 @@
+# Orquestração local do TaskAnalyzer (Fase 3).
+#
+#   docker compose run --rm testes   -> executa o Test Harness isolado
+#   docker compose run --rm lint     -> executa o lint (ruff)
+x-imagem: &imagem
+  build:
+    context: .
+    args:
+      PYTHON_VERSION: "3.12"
+  image: sdd-task-analyzer:latest
+
+services:
+  testes:
+    <<: *imagem
+    command: ["pytest", "tests/test_harness.py", "-v"]
+
+  lint:
+    <<: *imagem
+    command: ["ruff", "check", "."]
